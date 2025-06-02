@@ -3,4 +3,4 @@ numpy
 tensorflow
 matplotlib
 seaborn
-sckikit-learn
+scikit-learn
