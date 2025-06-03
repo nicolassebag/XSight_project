@@ -4,3 +4,4 @@ tensorflow
 matplotlib
 seaborn
 scikit-learn
+colorama
