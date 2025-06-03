@@ -4,5 +4,5 @@ tensorflow
 matplotlib
 seaborn
 scikit-learn
-iterative-stratification
 colorama
+iterative-stratification
