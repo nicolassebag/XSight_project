@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from data import fetch_images_to_memory
 
 import tensorflow as tf
-
+from sklearn.preprocessing import StandardScaler
 
 
 
@@ -41,6 +41,11 @@ def encode_labels(df: pd.DataFrame, label_column: str = 'Finding Labels') -> pd.
         dummies = df[label_column].str.get_dummies(sep='|')
         df = pd.concat([df, dummies], axis=1)
         df = df.drop(columns=[label_column])
+    df['Patient Sex M'] = df['Patient Sex'].map({'M': 1, 'F':0})
+    df['View Position PA'] = df['View Position'].map({'PA': 1, 'AP':0})
+    scaler = StandardScaler()
+    scaler.fit(df[['Patient Age']])
+    df['Patient Age'] = scaler.transform(df[['Patient Age']])
     return df
 
                 ############################################################
