@@ -5,8 +5,21 @@ import pandas as pd
 import numpy as np
 import os
 from PIL import Image
+import matplotlib.pyplot as plt
+
+from data import fetch_images_to_memory
 
 import tensorflow as tf
+
+
+
+
+### VARIABLE GLOBAL ###
+
+gcp_project= "xsight-project-le-wagon"
+bucket_name= "cxr8_images_bucket"
+prefix= "all_images/"
+
 
 
 ##### FUNCTIONS PREPROC DATA #####
@@ -115,10 +128,10 @@ def preprocess_6cat(df: pd.DataFrame,filepath: str) -> pd.DataFrame:
 
 
 
-##### FUNCTIONS PREPROC IMAGE #####
+##### --------- FUNCTIONS PREPROC IMAGE --------- #####
 
 
-def resize_all_images(df, img_dir, target_phys_size=(256, 256), final_size=(64, 64)):
+def resize_all_images(df, image_list, final_size=(64, 64)):
     """
     Redimensionne et normalise toutes les images d'un dossier en fonction de leur pixel spacing et leur size,
     en se basant sur les data d'un DataFrame.
@@ -133,33 +146,67 @@ def resize_all_images(df, img_dir, target_phys_size=(256, 256), final_size=(64, 
     Returns:
         list of tf.Tensor: Liste des images prétraitées.
     """
+
+
+    # -- Appel Retour un dict avec le nom de l'image et ses datas -- #
+
+    """
+    Fetch images from GCS into memory as BytesIO objects
+    Returns: {image_name: tf.io.decode_image(img_bytes) object}
+    """
+    images = fetch_images_to_memory(
+                                    gcp_project= gcp_project,
+                                    bucket_name= bucket_name,
+                                    prefix= prefix,
+                                    image_list= image_list
+                                )
+
+
     processed_images = []
 
-    for idx, row in df.iterrows():
-        img_filename = row['Image Index']
-        img_path = os.path.join(img_dir, img_filename)
 
-        # Chargement et forcage de l’image en grayscale
-        image = tf.io.read_file(img_path)
-        image = tf.image.decode_image(image, channels=1)
-        image.set_shape([None, None, 1])
+    for img_name, img in images.items():
+
+        # Recuperation de l'index de la photo dans data_entry
+        row = df[df["Image Index"] == img_name]
 
         # Taille physique cible (en pixels)
         pixel_spacing_x = row['OriginalImagePixelSpacing[x']
         pixel_spacing_y = row['y]']
 
+        target_phys_size=(256, 256)
+
         new_width = int(target_phys_size[0] / pixel_spacing_x)
         new_height = int(target_phys_size[1] / pixel_spacing_y)
 
         # Redimensionnement à taille physique homogène
-        image = tf.image.resize(image, (new_height, new_width))
+        img = tf.image.resize(img, (new_height, new_width))
 
         # Resize final pour le modèle
-        image = tf.image.resize(image, final_size)
+        img = tf.image.resize(img, final_size)
 
         # Normalisation des pixels
-        image = image / 255.0
+        img = img / 255.0
 
-        processed_images.append(image)
+        processed_images.append(img)
+
+    processed_images = np.array(processed_images)
 
     return processed_images
+
+
+
+
+
+
+# ------------------ TEST ------------------ #
+
+# df = pd.read_csv('raw_data/CXR8/CXR8/Data_Entry_2017_v2020.csv')
+# image_list=["00000001_000.png", "00000002_000.png"]
+
+# data_img = resize_all_images(df, target_phys_size=(256, 256), final_size=(64, 64))
+
+# print(len(data_img))
+# plt.imshow(data_img[0], cmap='gray')
+# plt.axis('off')
+# plt.show()
