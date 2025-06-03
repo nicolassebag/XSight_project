@@ -9,7 +9,7 @@ from PIL import Image
 import tensorflow as tf
 
 
-##### FUNCTIONS #####
+##### FUNCTIONS PREPROC DATA #####
 
 def load_data(filepath: str) -> pd.DataFrame:
     """Load a csv file into a Dataframe."""
@@ -38,6 +38,10 @@ def preprocess_1(filepath: str) -> pd.DataFrame:
     df = drop_unnecessary_columns(df)
     df = encode_labels(df)
     return df
+
+
+
+##### FUNCTIONS PREPROC IMAGE #####
 
 
 def resize_all_images(df, img_dir, target_phys_size=(256, 256), final_size=(64, 64)):
