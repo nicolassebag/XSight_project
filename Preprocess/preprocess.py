@@ -45,11 +45,85 @@ def encode_labels(df: pd.DataFrame, label_column: str = 'Finding Labels') -> pd.
 
                 ############################################################
 
-def preprocess_1(filepath: str) -> pd.DataFrame:
-    """Complete preprocessing the pipeline."""
+def preprocess_basic(filepath: str) -> pd.DataFrame:
+    """Complete preprocessing the pipeline.
+    1- load data raw
+    2- drop les columns relatives aux images
+    3- encode les maladies en columns separees
+    """
     df = load_data(filepath)
     df = drop_unnecessary_columns(df)
     df = encode_labels(df)
+    return df
+
+def preprocess_one_target(filepath: str) -> pd.DataFrame:
+    """
+    Preprocess data and retain only specific columns:
+    'Image Index', 'Patient Age','Patient Sex M',
+    'View Position PA', 'patient ID maladie'
+    """
+    df = load_data(filepath)
+    df = drop_unnecessary_columns(df)
+    df = encode_labels(df)
+
+    df['maladie'] = (df['No Finding'] == 0).astype(int)
+
+    columns_to_keep = [
+        'Image Index',
+        'Patient Age',
+        'Patient Sex M',
+        'View Position PA',
+        'patient ID',
+        'maladie'
+    ]
+
+    df = df[[col for col in columns_to_keep if col in df.columns]]
+
+    return df
+
+def preprocess_6cat(df: pd.DataFrame,filepath: str) -> pd.DataFrame:
+    """
+    Group multilabel pathology columns into 6 broader categories and return a cleaned DataFrame
+    with one-hot encoded category columns.
+    """
+
+    df = load_data(filepath)
+    df = drop_unnecessary_columns(df)
+    df = encode_labels(df)
+
+    cardio_pleurale      = ['Cardiomegaly', 'Edema', 'Effusion', 'Pleural_Thickening']
+    pulmonaire_diffuse   = ['Atelectasis', 'Consolidation', 'Infiltration', 'Pneumonia']
+    pulmonaire_chronique = ['Emphysema', 'Fibrosis']
+    tumeur               = ['Mass', 'Nodule']
+    autres               = ['Hernia', 'Pneumothorax']
+
+    def assigner_groupe(row):
+        if row.get('No Finding', 0) == 1:
+            return 'No_finding'
+        if any(row.get(col, 0) == 1 for col in cardio_pleurale):
+            return 'Cardio_Pleurale'
+        if any(row.get(col, 0) == 1 for col in pulmonaire_diffuse):
+            return 'Pulmonaire_Diffuse'
+        if any(row.get(col, 0) == 1 for col in pulmonaire_chronique):
+            return 'Pulmonaire_Chronique'
+        if any(row.get(col, 0) == 1 for col in tumeur):
+            return 'Tumeur'
+        if any(row.get(col, 0) == 1 for col in autres):
+            return 'Autres'
+        return 'Inconnu'
+
+    # Assign category
+    df['categorie_6'] = df.apply(assigner_groupe, axis=1)
+
+    # One-hot encode the new category column
+    df_onehot = pd.get_dummies(df['categorie_6'], prefix='cat6', dtype=int)
+    df = pd.concat([df, df_onehot], axis=1)
+
+    # Drop old pathology columns + temporary category column
+    columns_to_drop = cardio_pleurale + pulmonaire_diffuse + pulmonaire_chronique + tumeur + autres
+    columns_to_drop += ['No Finding', 'categorie_6', 'maladie']
+    df = df.drop(columns=[col for col in columns_to_drop if col in df.columns], errors='ignore')
+
     return df
 
 
