@@ -6,3 +6,4 @@ seaborn
 scikit-learn
 colorama
 iterative-stratification
+google-cloud-storage
