@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import Tuple
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
-from params import PATHO_COLUMNS, PATIENT_ID_COL, TEST_SIZE, VAL_SIZE, RANDOM_STATE
+from XSight.params import PATHO_COLUMNS, PATIENT_ID_COL, TEST_SIZE, VAL_SIZE, RANDOM_STATE
 
 def split_data(
     data_encoded: pd.DataFrame,
