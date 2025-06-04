@@ -7,7 +7,7 @@ import os
 from PIL import Image
 import matplotlib.pyplot as plt
 
-from data import fetch_images_to_memory
+from XSight.ML_Logic.data import fetch_images_to_memory
 
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
@@ -28,12 +28,20 @@ def load_data(filepath: str) -> pd.DataFrame:
     """Load a csv file into a Dataframe."""
     return pd.read_csv(filepath)
 
+def df_structure(df: pd.DataFrame,label_column: str = 'Finding Labels') -> pd.DataFrame:
+    if label_column in df.columns:
+        dummies = df[label_column].str.get_dummies(sep='|')
+        df = pd.concat([df, dummies], axis=1)
+        df = df.drop(columns=[label_column])
+    return df
+
 def drop_unnecessary_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Drop columns not needed for model training."""
     columns_to_drop = [
         'OriginalImage[Width', 'Height]', 'OriginalImagePixelSpacing[x', 'y]', 'Follow-up #', 'Patient ID'
     ]
     return df.drop(columns=[col for col in columns_to_drop if col in df.columns], errors='ignore')
+
 
 def encode_labels(df: pd.DataFrame, label_column: str = 'Finding Labels') -> pd.DataFrame:
     """OneHotEncode the labels and drop the original column."""

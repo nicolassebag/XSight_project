@@ -20,4 +20,4 @@ from io import BytesIO
 
 from Model.model import initialize_model, compile_model, train_model, evaluate_model
 from Preprocess.preprocess import load_data, drop_unnecessary_columns, encode_labels, preprocess_basic, preprocess_one_target, preprocess_6cat, resize_all_images
-from data import fetch_images_to_memory
+from XSight.ML_Logic.data import fetch_images_to_memory
