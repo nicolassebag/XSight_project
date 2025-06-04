@@ -44,7 +44,6 @@ def drop_unnecessary_columns(df: pd.DataFrame) -> pd.DataFrame:
     ]
     return df.drop(columns=[col for col in columns_to_drop if col in df.columns], errors='ignore')
 
-
 def encode_labels(df: pd.DataFrame, label_column: str = 'Finding Labels') -> pd.DataFrame:
     """OneHotEncode the labels and drop the original column."""
     if label_column in df.columns:
@@ -161,6 +160,8 @@ def stratified_chunk_split(df: pd.DataFrame, chunk_sizes: List[int], patho_colum
 
 
 
+
+
 ##### --------- FUNCTIONS PREPROC IMAGE --------- #####
 
 
@@ -225,7 +226,7 @@ def resize_all_images(df, image_list, final_size=(64, 64)):
 
     processed_images = np.array(processed_images)
 
-    return processed_images
+    return processed_images, final_size
 
 
 
