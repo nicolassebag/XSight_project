@@ -4,7 +4,7 @@ from typing import Optional
 from google.cloud import storage
 import tensorflow as tf
 import pandas as pd
-from params import *
+from XSight.params import *
 from colorama import Fore, Style
 
 
