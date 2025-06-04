@@ -6,7 +6,6 @@ from XSight.params import PATHO_COLUMNS, PATIENT_ID_COL, TEST_SIZE, VAL_SIZE, RA
 
 def split_data(
     data_encoded: pd.DataFrame,
-    patient_id_col: str = 'patient ID',
     test_size: float = 0.2,
     val_size: float = 0.5,
     random_state: int = 42
@@ -19,6 +18,7 @@ def split_data(
     """
 
     # Define the label columns internally
+    patient_id_col= 'patient ID'
     label_columns = [
         'Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema',
         'Effusion', 'Emphysema', 'Fibrosis', 'Hernia', 'Infiltration',
