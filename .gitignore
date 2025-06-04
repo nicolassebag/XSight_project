@@ -3,6 +3,7 @@ raw_data/
 
 # Notebooks
 *.ipynb
+Notebooks/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
