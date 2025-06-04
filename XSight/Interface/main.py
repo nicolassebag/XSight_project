@@ -19,20 +19,25 @@ from google.cloud import storage
 from io import BytesIO
 
 from XSight.ML_Logic.model import initialize_model, compile_model, train_model, evaluate_model
-from XSight.ML_Logic.preprocess import load_data, drop_unnecessary_columns, encode_labels, preprocess_basic, preprocess_one_target, preprocess_6cat, resize_all_images
-
+from XSight.ML_Logic.preprocess import preprocess_basic, preprocess_one_target, preprocess_6cat, resize_all_images, stratified_chunk_split
+from XSight.params import *
 
 
 
 
 def main():
 
+    filepath = 'data/Data_Entry_2017_v2020.csv'
+
     print("Chargement des données...")
-    df = load_data()
+    df = preprocess_basic(filepath)
+    df_chunk = stratified_chunk_split(df, chunk_sizes = [1000], patho_columns= PATHO_COLUMNS)
+
 
     print("Prétraitement des données ...")
 
-    df_clean = preprocess_one_target()
+    df_clean_one = preprocess_one_target(df_chunk)
+    df_clean_six = preprocess_6cat(df_chunk)
 
     print('Chargement des images...')
 
