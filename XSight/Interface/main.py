@@ -50,8 +50,9 @@ def main():
                      num_labels:int)
 
     print("Compiling du modèle...")
-    compile_model(model: Model, num_labels, learning_rate=0.0005))
-
+    compile_model(model: Model,
+                  num_labels: int,
+                  loss:str ='binary_crossentropy'
 
     print("Entraînement du modèle...")
     train_model(
