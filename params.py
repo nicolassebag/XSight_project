@@ -42,3 +42,34 @@ def validate_env_value(env, valid_options):
 
 for env, valid_options in env_valid_options.items():
     validate_env_value(env, valid_options)
+
+
+############### XSIGHT-PROJECT CONSTANTS #################
+
+
+RANDOM_STATE = 42
+TEST_SIZE = 0.2
+VAL_SIZE = 0.5
+
+PATIENT_ID_COL = 'patient ID'
+LABEL_COLUMN = 'Finding Labels'
+
+PATHO_COLUMNS = [
+    'Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema',
+    'Effusion', 'Emphysema', 'Fibrosis', 'Hernia', 'Infiltration',
+    'Mass', 'No Finding', 'Nodule', 'Pleural_Thickening',
+    'Pneumonia', 'Pneumothorax'
+]
+
+SELECTED_COLUMNS = [
+    'Image Index', 'Patient Age', 'No Finding', 'Patient Sex M',
+    'View Position PA', 'patient ID', 'maladie'
+]
+
+GROUPS = {
+    "cardio_pleurale": ['Cardiomegaly', 'Edema', 'Effusion', 'Pleural_Thickening'],
+    "pulmonaire_diffuse": ['Atelectasis', 'Consolidation', 'Infiltration', 'Pneumonia'],
+    "pulmonaire_chronique": ['Emphysema', 'Fibrosis'],
+    "tumeur": ['Mass', 'Nodule'],
+    "autres": ['Hernia', 'Pneumothorax']
+}
