@@ -58,6 +58,8 @@ def fetch_png_images(
     client = storage.Client(project=gcp_project)
     bucket = client.bucket(bucket_name)
 
+
+
     for image_name in image_df[image_column]:
         file_path = local_path / image_name
 
@@ -72,7 +74,7 @@ def fetch_png_images(
             img_bytes = blob.download_as_bytes()
             print(f"✅ {image_name} downloaded from GCS")
 
-        image_dict[image_name] = tf.io.decode_image(img_bytes)
+        image_dict[image_name] = tf.io.decode_image(img_bytes,channels=1)
 
     print(f"✅ All images loaded, total: {len(image_dict)}")
     return image_dict
