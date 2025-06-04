@@ -1,6 +1,13 @@
 import os
 import numpy as np
 
+############### MLOPS #################
+
+GCP_PROJECT = os.getenv('GCP_PROJECT', 'xsight-project-le-wagon')
+GCP_REGION = os.getenv('GCP_REGION', 'europe-west1')
+BUCKET_NAME = os.getenv('BUCKET_NAME', 'cxr8_images_bucket')
+PREFIX = os.getenv('PREFIX', 'all_images/')
+LOCAL_DIR = os.getenv('LOCAL_DIR', '/home/supply/code/nicolassebag/XSight_project/images/images')
 
 ############### XSIGHT-PROJECT CONSTANTS #################
 
