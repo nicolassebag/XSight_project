@@ -7,7 +7,7 @@ import os
 from PIL import Image
 import matplotlib.pyplot as plt
 
-from XSight.ML_Logic.data import fetch_images_to_memory
+from XSight.ML_Logic.data import fetch_png_images
 
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
@@ -72,15 +72,12 @@ def preprocess_basic(filepath: str) -> pd.DataFrame:
     df = encode_labels(df)
     return df
 
-def preprocess_one_target(filepath: str) -> pd.DataFrame:
+def preprocess_one_target(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Preprocess data and retain only specific columns:
-    'Image Index', 'Patient Age','Patient Sex M',
-    'View Position PA', 'patient ID', 'maladie'
+    Take already preprocessed/encoded data and retain only specific columns,
+    while creating a binary 'maladie' column.
     """
-    df = load_data(filepath)
-    df = drop_unnecessary_columns(df)
-    df = encode_labels(df)
+    df = df.copy()
 
     df['maladie'] = (df['No Finding'] == 0).astype(int)
 
@@ -92,20 +89,15 @@ def preprocess_one_target(filepath: str) -> pd.DataFrame:
         'Patient ID',
         'maladie'
     ]
-
     df = df[[col for col in columns_to_keep if col in df.columns]]
 
     return df
 
-def preprocess_6cat(df: pd.DataFrame,filepath: str) -> pd.DataFrame:
+def preprocess_6cat(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Group multilabel pathology columns into 6 broader categories and return a cleaned DataFrame
-    with one-hot encoded category columns.
+    From already encoded data, create 6-category classification and return cleaned DataFrame.
     """
-
-    df = load_data(filepath)
-    df = drop_unnecessary_columns(df)
-    df = encode_labels(df)
+    df = df.copy()
 
     cardio_pleurale      = ['Cardiomegaly', 'Edema', 'Effusion', 'Pleural_Thickening']
     pulmonaire_diffuse   = ['Atelectasis', 'Consolidation', 'Infiltration', 'Pneumonia']
@@ -128,19 +120,19 @@ def preprocess_6cat(df: pd.DataFrame,filepath: str) -> pd.DataFrame:
             return 'Autres'
         return 'Inconnu'
 
-    # Assign category
     df['categorie_6'] = df.apply(assigner_groupe, axis=1)
 
-    # One-hot encode the new category column
-    df_onehot = pd.get_dummies(df['categorie_6'], prefix='cat6', dtype=int)
-    df = pd.concat([df, df_onehot], axis=1)
+    # One-hot encode the 6 categories
+    df_cat6 = pd.get_dummies(df['categorie_6'], prefix='cat6', dtype=int)
+    df = pd.concat([df, df_cat6], axis=1)
 
-    # Drop old pathology columns + temporary category column
-    columns_to_drop = cardio_pleurale + pulmonaire_diffuse + pulmonaire_chronique + tumeur + autres
-    columns_to_drop += ['No Finding', 'categorie_6', 'maladie']
-    df = df.drop(columns=[col for col in columns_to_drop if col in df.columns], errors='ignore')
+    # Drop old pathology and helper columns
+    drop_cols = cardio_pleurale + pulmonaire_diffuse + pulmonaire_chronique + tumeur + autres
+    drop_cols += ['No Finding', 'categorie_6', 'maladie']  # maladie may or may not be there
+    df = df.drop(columns=[col for col in drop_cols if col in df.columns], errors='ignore')
 
     return df
+
 
 def stratified_chunk_split(df: pd.DataFrame, chunk_sizes: List[int], patho_columns: List[str], random_state: int = 42) -> List[pd.DataFrame]:
     """
@@ -165,7 +157,7 @@ def stratified_chunk_split(df: pd.DataFrame, chunk_sizes: List[int], patho_colum
         chunk_df = df.iloc[chunk_idx].reset_index(drop=True)
         chunks.append(chunk_df)
 
-    return chunks
+    return chunks[0]
 
 
 
@@ -195,7 +187,7 @@ def resize_all_images(df, image_list, final_size=(64, 64)):
     Fetch images from GCS into memory as BytesIO objects
     Returns: {image_name: tf.io.decode_image(img_bytes) object}
     """
-    images = fetch_images_to_memory(
+    images = fetch_png_images(
                                     gcp_project= gcp_project,
                                     bucket_name= bucket_name,
                                     prefix= prefix,
