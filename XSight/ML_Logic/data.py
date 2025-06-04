@@ -48,7 +48,7 @@ def fetch_png_images(
                 image_dict[image_name] = None
                 continue
 
-        image_dict[image_name] = tf.io.decode_image(img_bytes)
+        image_dict[image_name] = tf.io.decode_image(img_bytes,channels=1)
 
     print(f"✅ All images loaded, total: {len(image_dict)}")
     return image_dict
