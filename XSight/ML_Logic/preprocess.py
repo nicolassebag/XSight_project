@@ -38,7 +38,7 @@ def df_structure(df: pd.DataFrame,label_column: str = 'Finding Labels') -> pd.Da
 def drop_unnecessary_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Drop columns not needed for model training."""
     columns_to_drop = [
-        'OriginalImage[Width', 'Height]', 'OriginalImagePixelSpacing[x', 'y]', 'Follow-up #', 'Patient ID'
+        'OriginalImage[Width', 'Height]', 'OriginalImagePixelSpacing[x', 'y]', 'Follow-up #'
     ]
     return df.drop(columns=[col for col in columns_to_drop if col in df.columns], errors='ignore')
 
@@ -73,7 +73,7 @@ def preprocess_one_target(filepath: str) -> pd.DataFrame:
     """
     Preprocess data and retain only specific columns:
     'Image Index', 'Patient Age','Patient Sex M',
-    'View Position PA', 'patient ID maladie'
+    'View Position PA', 'patient ID', 'maladie'
     """
     df = load_data(filepath)
     df = drop_unnecessary_columns(df)
@@ -86,7 +86,7 @@ def preprocess_one_target(filepath: str) -> pd.DataFrame:
         'Patient Age',
         'Patient Sex M',
         'View Position PA',
-        'patient ID',
+        'Patient ID',
         'maladie'
     ]
 
