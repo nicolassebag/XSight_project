@@ -9,7 +9,7 @@ RANDOM_STATE = 42
 TEST_SIZE = 0.2
 VAL_SIZE = 0.5
 
-PATIENT_ID_COL = 'patient ID'
+PATIENT_ID_COL = 'Patient ID'
 LABEL_COLUMN = 'Finding Labels'
 
 PATHO_COLUMNS = [

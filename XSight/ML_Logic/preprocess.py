@@ -12,7 +12,9 @@ from XSight.ML_Logic.data import fetch_images_to_memory
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 
-
+from typing import List
+from XSight.params import PATHO_COLUMNS, PATIENT_ID_COL, RANDOM_STATE
+from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 
 ### VARIABLE GLOBAL ###
 
@@ -139,6 +141,31 @@ def preprocess_6cat(df: pd.DataFrame,filepath: str) -> pd.DataFrame:
     df = df.drop(columns=[col for col in columns_to_drop if col in df.columns], errors='ignore')
 
     return df
+
+def stratified_chunk_split(df: pd.DataFrame, chunk_sizes: List[int], patho_columns: List[str], random_state: int = 42) -> List[pd.DataFrame]:
+    """
+    Split the full DataFrame into stratified, non-overlapping chunks by image-level rows,
+    preserving label distribution based on pathology columns.
+    """
+    X = df.index.values.reshape(-1, 1)
+    y = df[patho_columns].values
+
+    chunks = []
+    seen_indices = set()
+
+    for size in chunk_sizes:
+        msss = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=size, random_state=random_state)
+        _, chunk_idx = next(msss.split(X, y))
+
+        # Remove already used indices
+        chunk_idx = [idx for idx in chunk_idx if idx not in seen_indices]
+        seen_indices.update(chunk_idx)
+
+        # Append chunk
+        chunk_df = df.iloc[chunk_idx].reset_index(drop=True)
+        chunks.append(chunk_df)
+
+    return chunks
 
 
 
