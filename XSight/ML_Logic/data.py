@@ -21,7 +21,7 @@ def fetch_images_to_memory(
     for image_name in image_list:
         blob = bucket.blob(f"{prefix}{image_name}")
         img_bytes = blob.download_as_bytes()
-        image_dict[image_name] = tf.io.decode_image(img_bytes)
+        image_dict[image_name] = tf.io.decode_image(img_bytes,channels=1)
 
     return image_dict
 
