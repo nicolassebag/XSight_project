@@ -38,7 +38,7 @@ def df_structure(df: pd.DataFrame,label_column: str = 'Finding Labels') -> pd.Da
 def drop_unnecessary_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Drop columns not needed for model training."""
     columns_to_drop = [
-        'OriginalImage[Width', 'Height]', 'OriginalImagePixelSpacing[x', 'y]', 'Follow-up #', 'Patient ID'
+        'OriginalImage[Width', 'Height]', 'OriginalImagePixelSpacing[x', 'y]', 'Follow-up #'
     ]
     return df.drop(columns=[col for col in columns_to_drop if col in df.columns], errors='ignore')
 
@@ -51,6 +51,7 @@ def encode_labels(df: pd.DataFrame, label_column: str = 'Finding Labels') -> pd.
         df = df.drop(columns=[label_column])
     df['Patient Sex M'] = df['Patient Sex'].map({'M': 1, 'F':0})
     df['View Position PA'] = df['View Position'].map({'PA': 1, 'AP':0})
+    df = df.drop(columns=['Patient Sex','View Position'])
     scaler = StandardScaler()
     scaler.fit(df[['Patient Age']])
     df['Patient Age'] = scaler.transform(df[['Patient Age']])
@@ -73,7 +74,7 @@ def preprocess_one_target(filepath: str) -> pd.DataFrame:
     """
     Preprocess data and retain only specific columns:
     'Image Index', 'Patient Age','Patient Sex M',
-    'View Position PA', 'patient ID maladie'
+    'View Position PA', 'patient ID', 'maladie'
     """
     df = load_data(filepath)
     df = drop_unnecessary_columns(df)
@@ -86,7 +87,7 @@ def preprocess_one_target(filepath: str) -> pd.DataFrame:
         'Patient Age',
         'Patient Sex M',
         'View Position PA',
-        'patient ID',
+        'Patient ID',
         'maladie'
     ]
 

@@ -4,7 +4,7 @@ import numpy as np
 
 ############### XSIGHT-PROJECT CONSTANTS #################
 
-
+DATA_SIZE= 100
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 VAL_SIZE = 0.5
