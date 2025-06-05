@@ -54,8 +54,9 @@ def main(num_labels = num_labels ):
     processed_images, image_size = resize_all_images(df,
                                          image_list,
                                          final_size= final_size)
-    image_size = (tuple(image_size),1)
-
+    image_size = (image_size[0], image_size[1], 1)
+    print(image_size)
+    # image_size = image_size
 
     print("Initialisation du modèle...")
     model = initialize_model(image_size,
@@ -65,7 +66,7 @@ def main(num_labels = num_labels ):
     print("Compiling du modèle...")
     compile_model(model= model,
                   num_labels = num_labels,
-                  loss= 'binary_crossentropy'
+                  loss= 'binary_focal_crossentropy'
                   )
 
     print("Entraînement du modèle...")
