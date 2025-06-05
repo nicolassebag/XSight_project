@@ -8,10 +8,10 @@ from XSight.params import *
 from colorama import Fore, Style
 
 
-image_list = pd.read_csv("data/Data_Entry_2017_v2020.csv")['Image Index'].tolist()
+IMAGE_LIST = pd.read_csv(IMAGE_LIST_PATH)['Image Index'].tolist()
 
 def fetch_png_images(
-    image_list: list = image_list,
+    image_list: list = IMAGE_LIST,
     local_dir: str = LOCAL_DIR,
     gcp_project: str = GCP_PROJECT,
     bucket_name: str = BUCKET_NAME,

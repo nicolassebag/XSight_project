@@ -13,14 +13,10 @@ import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 
 from typing import List
-from XSight.params import PATHO_COLUMNS, PATIENT_ID_COL, RANDOM_STATE
+from XSight.params import PATHO_COLUMNS, PATIENT_ID_COL, RANDOM_STATE, GCP_PROJECT, BUCKET_NAME, PREFIX
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 
-### VARIABLE GLOBAL ###
 
-gcp_project= "xsight-project-le-wagon"
-bucket_name= "cxr8_images_bucket"
-prefix= "all_images/"
 
 
 
@@ -189,9 +185,9 @@ def resize_all_images(df, image_list, final_size=(64, 64)):
     Returns: {image_name: tf.io.decode_image(img_bytes) object}
     """
     images = fetch_png_images(
-                                    gcp_project= gcp_project,
-                                    bucket_name= bucket_name,
-                                    prefix= prefix,
+                                    gcp_project= GCP_PROJECT,
+                                    bucket_name= BUCKET_NAME,
+                                    prefix= PREFIX,
                                     image_list= image_list
                                 )
 
