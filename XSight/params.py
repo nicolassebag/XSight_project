@@ -3,11 +3,13 @@ import numpy as np
 
 ############### MLOPS #################
 
-GCP_PROJECT = os.getenv('GCP_PROJECT', 'xsight-project-le-wagon')
-GCP_REGION = os.getenv('GCP_REGION', 'europe-west1')
-BUCKET_NAME = os.getenv('BUCKET_NAME', 'cxr8_images_bucket')
+GCP_PROJECT = os.getenv('GCP_PROJECT')
+GCP_REGION = os.getenv('GCP_REGION')
+BUCKET_NAME = os.getenv('BUCKET_NAME')
 PREFIX = os.getenv('PREFIX', 'all_images/')
 LOCAL_DIR = os.getenv('LOCAL_DIR', '/home/supply/code/nicolassebag/XSight_project/images/images')
+IMAGE_LIST_PATH = os.getenv("IMAGE_LIST_PATH")
+
 
 ############### XSIGHT-PROJECT CONSTANTS #################
 
