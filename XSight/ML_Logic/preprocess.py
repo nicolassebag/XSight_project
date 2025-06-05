@@ -67,7 +67,7 @@ def preprocess_basic(filepath: str) -> pd.DataFrame:
     3- encode les maladies en columns separees
     """
     df = load_data(filepath)
-    df = drop_unnecessary_columns(df)
+    # df = drop_unnecessary_columns(df)
     df = encode_labels(df)
     return df
 
