@@ -7,7 +7,6 @@ import pandas as pd
 from XSight.params import *
 from colorama import Fore, Style
 
-
 IMAGE_LIST = pd.read_csv(IMAGE_LIST_PATH)['Image Index'].tolist()
 
 def fetch_png_images(

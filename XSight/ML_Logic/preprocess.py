@@ -18,9 +18,8 @@ from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 
 
 
+##### --------- FUNCTIONS PREPROC DATA --------- #####
 
-
-##### FUNCTIONS PREPROC DATA #####
 
 def load_data(filepath: str) -> pd.DataFrame:
     """Load a csv file into a Dataframe."""
@@ -52,7 +51,7 @@ def encode_labels(df: pd.DataFrame, label_column: str = 'Finding Labels') -> pd.
     scaler = StandardScaler()
     scaler.fit(df[['Patient Age']])
     df['Patient Age'] = scaler.transform(df[['Patient Age']])
-    return df, scaler 
+    return df, scaler
 
                 ############################################################
 
@@ -134,6 +133,7 @@ def stratified_chunk_split(df: pd.DataFrame, chunk_sizes: List[int], patho_colum
     Split the full DataFrame into stratified, non-overlapping chunks by image-level rows,
     preserving label distribution based on pathology columns.
     """
+
     X = df.index.values.reshape(-1, 1)
     y = df[patho_columns].values
 
