@@ -12,3 +12,6 @@ keras
 seaborn
 fsspec
 gcsfs
+# API
+fastapi
+uvicorn

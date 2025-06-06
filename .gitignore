@@ -6,6 +6,9 @@ raw_data/
 *.ipynb
 Notebooks/
 
+# Saved Models
+model_registry/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -112,6 +115,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.env.yaml
 
 # Spyder project settings
 .spyderproject

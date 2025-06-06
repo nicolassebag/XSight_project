@@ -5,14 +5,13 @@ uvicorn
 # MODEL
 numpy
 pandas
-typing
-colorama
-keras
+matplotlib
+Pillow
 tensorflow
-google.cloud
-io.BytesIO
-os
-pathlib
-PIL
-sklearn
-iterstrat.ml_stratifiers
+iterative-stratification
+google-cloud-storage
+setuptools
+keras
+seaborn
+colorama
+scikit-learn
