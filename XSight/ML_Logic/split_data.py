@@ -18,7 +18,7 @@ def split_data(
     """
 
     # Define the label columns internally
-    patient_id_col= 'patient ID'
+    patient_id_col= 'Patient ID'
     label_columns = [
         'Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema',
         'Effusion', 'Emphysema', 'Fibrosis', 'Hernia', 'Infiltration',
