@@ -1,0 +1,18 @@
+# API
+fastapi
+uvicorn
+
+# MODEL
+numpy
+pandas
+typing
+colorama
+keras
+tensorflow
+google.cloud
+io.BytesIO
+os
+pathlib
+PIL
+sklearn
+iterstrat.ml_stratifiers
