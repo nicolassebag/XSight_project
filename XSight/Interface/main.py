@@ -36,7 +36,7 @@ def main(num_labels = num_labels ):
     filepath = IMAGE_LIST_PATH
 
     print("Chargement des données...")
-    df, scaler = preprocess_basic(filepath)
+    df = preprocess_basic(filepath)
     df_chunk = stratified_chunk_split(df, chunk_sizes = [10], patho_columns= PATHO_COLUMNS)
 
 

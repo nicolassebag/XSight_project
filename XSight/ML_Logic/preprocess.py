@@ -6,6 +6,7 @@ import numpy as np
 import os
 from PIL import Image
 import matplotlib.pyplot as plt
+import joblib
 
 from XSight.ML_Logic.data import fetch_png_images
 
@@ -39,8 +40,11 @@ def drop_unnecessary_columns(df: pd.DataFrame) -> pd.DataFrame:
     ]
     return df.drop(columns=[col for col in columns_to_drop if col in df.columns], errors='ignore')
 
-def encode_labels(df: pd.DataFrame, label_column: str = 'Finding Labels') -> pd.DataFrame:
+def encode_labels(df: pd.DataFrame, save_scaler_path: str) -> pd.DataFrame:
     """OneHotEncode the labels and drop the original column."""
+
+    label_column =  'Finding Labels'
+    
     if label_column in df.columns:
         dummies = df[label_column].str.get_dummies(sep='|')
         df = pd.concat([df, dummies], axis=1)
@@ -50,8 +54,11 @@ def encode_labels(df: pd.DataFrame, label_column: str = 'Finding Labels') -> pd.
     df = df.drop(columns=['Patient Sex','View Position'])
     scaler = StandardScaler()
     scaler.fit(df[['Patient Age']])
+    joblib.dump(scaler, save_scaler_path)
+
+
     df['Patient Age'] = scaler.transform(df[['Patient Age']])
-    return df, scaler
+    return df
 
                 ############################################################
 
@@ -63,7 +70,7 @@ def preprocess_basic(filepath: str) -> pd.DataFrame:
     """
     df = load_data(filepath)
     # df = drop_unnecessary_columns(df)
-    df = encode_labels(df)
+    df = encode_labels(df,save_scaler_path="models/scaler.joblib")
     return df
 
 def preprocess_one_target(df: pd.DataFrame) -> pd.DataFrame:
