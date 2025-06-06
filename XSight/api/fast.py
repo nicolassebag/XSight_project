@@ -1,6 +1,6 @@
 import pandas as pd
 import joblib
-from typing import Literal
+from typing import Literal, Tuple
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -8,13 +8,13 @@ import tensorflow as tf
 
 
 
-from XSight.ML_Logic.registery import load_model
-from XSight.ML_Logic.preprocess import encode_metada, preprocess_basic, preprocess_one_target, preprocess_6cat, resize_all_images, stratified_chunk_split
+from XSight.ML_Logic.registery import load_model_from_run
+from XSight.ML_Logic.preprocess import preprocess_basic, preprocess_one_target, preprocess_6cat, resize_all_images, stratified_chunk_split
 from PIL import Image
 import io
 
 app = FastAPI()
-app.state.model=load_model()
+app.state.model=load_model_from_run("model_in_prod")
 
 # Allowing all middleware is optional, but good practice for dev purposes
 app.add_middleware(
@@ -50,7 +50,7 @@ async def predict(file: UploadFile = File(...),
                      "View Point": view_position})
 
     metadata_df = pd.DataFrame([metadata])
-    scaler = joblib.load("models/scaler.joblib")
+    scaler = joblib.load("XSight/ML_Logic/scaler.joblib")
     X_tab = scaler.transform(metadata_df)
 
 

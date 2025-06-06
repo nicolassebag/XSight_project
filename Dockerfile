@@ -1,8 +1,8 @@
-  # FROM python:3.12
-  FROM tensorflow/tensorflow:latest
+  FROM python:3.12
   COPY XSight /XSight
-  # COPY app /app
-  COPY Requirements_prod.txt /Requirements_prod.txt
+  COPY data /data
+  COPY setup.py /setup.py
+  COPY Requirements_prod.txt /Requirements.txt
   RUN pip install --upgrade pip
-  RUN pip install -r Requirements_prod.txt
-  CMD uvicorn XSight.api.fast:app --host 0.0.0.0 --port 8080
+  RUN pip install .
+  CMD uvicorn XSight.api.fast:app --host 0.0.0.0 --port $PORT

@@ -44,7 +44,7 @@ def encode_labels(df: pd.DataFrame, save_scaler_path: str) -> pd.DataFrame:
     """OneHotEncode the labels and drop the original column."""
 
     label_column =  'Finding Labels'
-    
+
     if label_column in df.columns:
         dummies = df[label_column].str.get_dummies(sep='|')
         df = pd.concat([df, dummies], axis=1)
@@ -70,7 +70,7 @@ def preprocess_basic(filepath: str) -> pd.DataFrame:
     """
     df = load_data(filepath)
     # df = drop_unnecessary_columns(df)
-    df = encode_labels(df,save_scaler_path="models/scaler.joblib")
+    df = encode_labels(df,save_scaler_path="XSight/ML_Logic/scaler.joblib")
     return df
 
 def preprocess_one_target(df: pd.DataFrame) -> pd.DataFrame:
