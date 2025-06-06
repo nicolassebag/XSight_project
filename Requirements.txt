@@ -1,9 +1,12 @@
-pandas
 numpy
-tensorflow
+pandas
 matplotlib
-seaborn
-scikit-learn
+Pillow
 colorama
+scikit-learn
+tensorflow
 iterative-stratification
 google-cloud-storage
+setuptools
+keras
+seaborn
