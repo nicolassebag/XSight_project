@@ -33,7 +33,7 @@ final_size = (64,64)
 
 def main(num_labels = num_labels ):
 
-    filepath = 'data/Data_Entry_2017_v2020.csv'
+    filepath = IMAGE_LIST_PATH
 
     print("Chargement des données...")
     df = preprocess_basic(filepath)
