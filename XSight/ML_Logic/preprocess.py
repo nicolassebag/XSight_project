@@ -52,7 +52,7 @@ def encode_labels(df: pd.DataFrame, label_column: str = 'Finding Labels') -> pd.
     scaler = StandardScaler()
     scaler.fit(df[['Patient Age']])
     df['Patient Age'] = scaler.transform(df[['Patient Age']])
-    return df
+    return df, scaler 
 
                 ############################################################
 
