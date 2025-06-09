@@ -6,9 +6,14 @@ import numpy as np
 GCP_PROJECT = os.getenv('GCP_PROJECT')
 GCP_REGION = os.getenv('GCP_REGION')
 BUCKET_NAME = os.getenv('BUCKET_NAME')
+MODEL_BUCKET_NAME= os.getenv('MODEL_BUCKET_NAME')
 PREFIX = os.getenv('PREFIX', 'all_images/')
 LOCAL_DIR = os.getenv('LOCAL_DIR', '/home/supply/code/nicolassebag/XSight_project/images/images')
 IMAGE_LIST_PATH = os.getenv("IMAGE_LIST_PATH")
+
+LOCAL_REGISTRY_PATH = os.getenv("LOCAL_REGISTRY_PATH")
+MODEL_PREFIX = os.getenv("MODEL_PREFIX")
+
 
 
 ############### XSIGHT-PROJECT CONSTANTS #################

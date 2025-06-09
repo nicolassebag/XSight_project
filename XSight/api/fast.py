@@ -15,7 +15,8 @@ from PIL import Image
 import io
 
 app = FastAPI()
-app.state.model=load_model_from_gcp("model_registry/test_model_20250609_103957/model.keras")
+# app.state.model=load_model_from_gcp("model_registry/test_model_20250609_103057/model.keras")
+app.state.model=load_model_from_gcp("model_registry/test_model_20250609_154800/model.keras")
 
 # Allowing all middleware is optional, but good practice for dev purposes
 app.add_middleware(
@@ -35,8 +36,8 @@ async def predict(file: UploadFile = File(...),
                   view_position: Literal["PA", "AP"] = Form(...),
                   pixel_spacing_x: float = Form(...),
                   pixel_spacing_y: float = Form(...),
-                  final_width: int = Form(64),
-                  final_height: int = Form(64)
+                  final_width: int = Form(512),
+                  final_height: int = Form(512)
                   ):
     """
     Predicts pathology of patient given X-ray image and metadata :
@@ -45,59 +46,69 @@ async def predict(file: UploadFile = File(...),
     - View point (PA or AP)
     """
 
-    ### ---- Scaling metadata ---- ###
+    try:
+        ### ---- Scaling metadata ---- ###
 
-    final_size = (final_width, final_height)
-    
-    metadata = dict({"Patient Sex": patient_sex,
-                     "Patient Age": patient_age,
-                     "View Point": view_position})
+        final_size = (final_width, final_height)
 
-    metadata_df = pd.DataFrame([metadata])
-    scaler = joblib.load("XSight/ML_Logic/scaler.joblib")
-    X_tab = scaler.transform(metadata_df)
+        metadata = dict({"Patient Sex": patient_sex,
+                        "Patient Age": patient_age,
+                        "View Position": view_position})
 
+        ### ---- Preprocessing file ---- ###
+        metadata_df = pd.DataFrame([metadata])
 
-    ### ---- Preprocessing file ---- ###
-    X_tab = pd.DataFrame([metadata])
+        # Encodage des variables catégorielles
+        metadata_df["Patient Sex M"] = metadata_df["Patient Sex"].map({"M": 1, "F": 0})
+        metadata_df["View Position PA"] = metadata_df["View Position"].map({"PA": 1, "AP": 0})
+        metadata_df.drop(columns=["Patient Sex", "View Position"], inplace=True)
 
-    # Encodage des variables catégorielles
-    X_tab["Patient Sex M"] = X_tab["Patient Sex"].map({"M": 1, "F": 0})
-    X_tab["View Position PA"] = X_tab["View Position"].map({"PA": 1, "AP": 0})
-    X_tab.drop(columns=["Patient Sex", "View Position"], inplace=True)
+        # Scaling de l'âge
+        scaler = joblib.load("XSight/ML_Logic/scaler.joblib")
+        metadata_df["Patient Age"] = scaler.transform(metadata_df[["Patient Age"]])
 
-    # Scaling de l'âge
-    scaler = joblib.load("XSight/ML_Logic/scaler.joblib")
-    X_tab["Patient Age"] = scaler.transform(X_tab[["Patient Age"]])
+        # Conversion en numpy + batch
+        X_tab = metadata_df.values.astype("float32")  # (1, 3)
 
-    # Conversion en numpy + batch
-    X_tab_np = X_tab.values.astype("float32")  # (1, 3)
+        ### ---- Prétraitement image ---- ###
+        image_bytes = await file.read()
+        image = Image.open(io.BytesIO(image_bytes))
 
-    ### ---- Prétraitement image ---- ###
-    if image.mode != "RGB":
-        image = image.convert("RGB")
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
-    # Redimension à taille physique homogène
-    target_phys_size = (256, 256)
-    new_width = int(target_phys_size[0] / pixel_spacing_x)
-    new_height = int(target_phys_size[1] / pixel_spacing_y)
+        # Redimension à taille physique homogène
+        target_phys_size = (256, 256)
+        new_width = int(target_phys_size[0] / pixel_spacing_x)
+        new_height = int(target_phys_size[1] / pixel_spacing_y)
 
-    image = image.resize((new_width, new_height))
-    image = image.resize(final_size)
+        image = image.resize((new_width, new_height))
+        image = image.resize(final_size)
 
-    # Tensor, normalisation, batch
-    X_img = np.array(image).astype("float32") / 255.0  # (H, W, 3)
-    # X_img = np.expand_dims(X_img, axis=-1)  # (H, W, 1)
-    X_img = np.expand_dims(X_img, axis=0)   # (1, H, W, 1)
+        # Tensor, normalisation, batch
+        X_img = np.array(image).astype("float32") / 255.0  # (H, W, 3)
+        # X_img = np.expand_dims(X_img, axis=-1)  # (H, W, 1)
+        X_img = np.expand_dims(X_img, axis=0)   # (1, H, W, 1)
 
-    ### ---- Prédiction ---- ###
-    y_pred = app.state.model.predict([X_img, X_tab_np])  # (n_classes,)
+        ### ---- Prédiction ---- ###
+        y_pred = app.state.model.predict([X_img, X_tab])  # (n_classes,)
 
-    prediction = pd.DataFrame(y_pred, columns=PATHO_COLUMNS)
-    prediction = prediction.loc[:,(prediction !=0).any(axis=0)]
-    prediction = prediction.iloc[0].to_dict()
+        prediction = pd.DataFrame(y_pred, columns=PATHO_COLUMNS)
+        prediction = prediction.loc[:,(prediction !=0).any(axis=0)]
+        prediction = prediction.iloc[0].to_dict()
 
-    return X_tab_np, X_img, prediction
+        prediction = pd.DataFrame(y_pred, columns=PATHO_COLUMNS)
+        prediction = prediction.loc[:,(prediction !=0).any(axis=0)]
+        prediction_dict = prediction.iloc[0].to_dict()
+
+        # IMPORTANT : Conversion en types Python natifs
+        prediction_serializable = {k: float(v) for k, v in prediction_dict.items()}
+        return {"pathologies": prediction_serializable}
+
+    except Exception as e:
+        import traceback
+        error_detail = f"Erreur : {str(e)}\nTraceback : {traceback.format_exc()}"
+        raise HTTPException(status_code=500, detail=error_detail)
 
 # Define a root \`/\` endpoint
 @app.get("/")
