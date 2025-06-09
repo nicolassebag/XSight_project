@@ -4,18 +4,21 @@ import joblib
 from typing import Literal, Tuple
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 import tensorflow as tf
 
-from XSight.params import PATHO_COLUMNS
 
+from XSight.params import PATHO_COLUMNS
+from XSight.Visualisation.gradcam import *
 from XSight.ML_Logic.registery import load_model_from_gcp
 from XSight.ML_Logic.preprocess import preprocess_basic, preprocess_one_target, preprocess_6cat, resize_all_images, stratified_chunk_split
 from PIL import Image
 import io
 
 app = FastAPI()
-# app.state.model=load_model_from_gcp("model_registry/test_model_20250609_103057/model.keras")
+
+X_PRED={} # stockage des inputs
+
 app.state.model=load_model_from_gcp("model_registry/test_model_20250609_154800/model.keras")
 
 # Allowing all middleware is optional, but good practice for dev purposes
@@ -29,24 +32,20 @@ app.add_middleware(
 
 # http://127.0.0.1:8000/predict?pickup_datetime=2014-07-06+19:18:00&pickup_longitude=-73.950655&pickup_latitude=40.783282&dropoff_longitude=-73.984365&dropoff_latitude=40.769802&passenger_count=2
 
-@app.post("/predict")
-async def predict(file: UploadFile = File(...),
+@app.post("/input")
+async def inputs(file: UploadFile = File(...),
                   patient_age: int = Form(...),
                   patient_sex: Literal["M", "F"] = Form(...),
                   view_position: Literal["PA", "AP"] = Form(...),
                   pixel_spacing_x: float = Form(...),
                   pixel_spacing_y: float = Form(...),
                   final_width: int = Form(512),
-                  final_height: int = Form(512)
-                  ):
-    """
-    Predicts pathology of patient given X-ray image and metadata :
-    - Age (int)
-    - Sex (M or F)
-    - View point (PA or AP)
-    """
+                  final_height: int = Form(512)):
 
     try:
+        ### ----- image name as uid ---- ###
+        image_id = file.filename
+
         ### ---- Scaling metadata ---- ###
 
         final_size = (final_width, final_height)
@@ -90,7 +89,30 @@ async def predict(file: UploadFile = File(...),
         # X_img = np.expand_dims(X_img, axis=-1)  # (H, W, 1)
         X_img = np.expand_dims(X_img, axis=0)   # (1, H, W, 1)
 
-        ### ---- Prédiction ---- ###
+        X_PRED[image_id] = {"X_img": X_img, "X_tab":X_tab}
+
+        return {"image_id":image_id}
+
+    except Exception as e:
+        import traceback
+        error_detail = f"Erreur : {str(e)}\nTraceback : {traceback.format_exc()}"
+        raise HTTPException(status_code=500, detail=error_detail)
+
+
+
+@app.post("/predict")
+async def predict(image_id: str = Form(...)):
+    """
+    Predicts pathology from preprocessed data using data_id
+    """
+
+    try:
+        if image_id not in X_PRED:
+            raise HTTPException(status_code=404, detail="unknown image")
+
+        X_img = X_PRED[image_id]["X_img"]
+        X_tab = X_PRED[image_id]["X_tab"]
+
         y_pred = app.state.model.predict([X_img, X_tab])  # (n_classes,)
 
         prediction = pd.DataFrame(y_pred, columns=PATHO_COLUMNS)
@@ -103,12 +125,51 @@ async def predict(file: UploadFile = File(...),
 
         # IMPORTANT : Conversion en types Python natifs
         prediction_serializable = {k: float(v) for k, v in prediction_dict.items()}
-        return {"pathologies": prediction_serializable}
+        return {"image_id": image_id, "pathologies":list(prediction_serializable.keys())}
 
     except Exception as e:
         import traceback
         error_detail = f"Erreur : {str(e)}\nTraceback : {traceback.format_exc()}"
         raise HTTPException(status_code=500, detail=error_detail)
+
+
+@app.post("/heatmap")
+async def heatmap(image_id: str = Form(...), patho_index: int = Form(...)):
+    try:
+        if image_id not in X_PRED:
+            raise HTTPException(status_code=404, detail="image_id inconnu")
+        X_img = X_PRED[image_id]["X_img"]
+        X_tab = X_PRED[image_id]["X_tab"]
+
+        # Génère la heatmap pour la pathologie d'index patho_index
+        heatmap = make_gradcam_heatmap(
+            X_img,
+            X_tab,
+            app.state.model,
+            last_conv_layer_name="conv5_block3_out",
+            pred_index=patho_index)
+
+        # Charge l'image originale
+        original_img = X_PRED[image_id]["X_img"][0]  # Supprime la dimension batch
+        original_img = (original_img * 255).astype("uint8")  # Dénormalise
+
+        # applique heatmap
+        superimposed_img = apply_heatmap(original_img, heatmap)
+
+        # Conversion en png pour http
+        img_byte_arr = io.BytesIO()
+        superimposed_img.save(img_byte_arr, format='PNG')
+        img_byte_arr.seek(0)
+
+        # save_and_display_gradcam(X_img, heatmap=heatmap)
+
+        return Response(content=img_byte_arr.getvalue(), media_type="image/png")
+
+    except Exception as e:
+        import traceback
+        error_detail = f"Erreur : {str(e)}\nTraceback : {traceback.format_exc()}"
+        raise HTTPException(status_code=500, detail=error_detail)
+
 
 # Define a root \`/\` endpoint
 @app.get("/")
