@@ -6,15 +6,15 @@ from tensorflow import keras
 from colorama import Fore, Style
 from google.cloud import storage
 import tempfile
+from XSight.params import *
 
 # ────────────────────────────────────────────────
 # CONFIGURATION
 # ────────────────────────────────────────────────
 
-GCS_BUCKET_NAME = "xsight_models"
-GCS_MODEL_PREFIX = "model_registry"
+model_bucket_name = MODEL_BUCKET_NAME
+model_prefix = MODEL_PREFIX
 
-LOCAL_REGISTRY_PATH = "model_registry"
 os.makedirs(LOCAL_REGISTRY_PATH, exist_ok=True)
 
 # ────────────────────────────────────────────────
@@ -107,7 +107,7 @@ def finalize_and_upload(model, history, params, model_name="model"):
     save_results_json(params, final_metrics, run_dir)
 
     # Upload everything to GCS
-    upload_directory_to_gcs(run_dir, GCS_BUCKET_NAME, GCS_MODEL_PREFIX)
+    upload_directory_to_gcs(run_dir, MODEL_BUCKET_NAME, MODEL_PREFIX)
 
     print(Fore.MAGENTA + "✅ All artifacts saved and uploaded securely." + Style.RESET_ALL)
 
@@ -125,7 +125,7 @@ def load_model_from_gcp(gcp_path: str) -> keras.Model:
         keras.Model
     """
     import tempfile
-    bucket_name = GCS_BUCKET_NAME
+    bucket_name = MODEL_BUCKET_NAME
     client = storage.Client()
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(gcp_path)
@@ -142,6 +142,7 @@ def load_model_from_gcp(gcp_path: str) -> keras.Model:
 
     return model
 
+load_model_from_gcp("model_registry/test_model_20250609_154800/model.keras")
 
 ################ USAGE DE REGISTERY ###########################
 #from registry import finalize_and_upload
