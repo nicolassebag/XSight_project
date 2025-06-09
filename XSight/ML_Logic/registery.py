@@ -4,9 +4,21 @@ import pandas as pd
 from datetime import datetime
 from tensorflow import keras
 from colorama import Fore, Style
+from google.cloud import storage
+
+# ────────────────────────────────────────────────
+# CONFIGURATION
+# ────────────────────────────────────────────────
+
+GCS_BUCKET_NAME = "xsight_models"
+GCS_MODEL_PREFIX = "model_registry"
 
 LOCAL_REGISTRY_PATH = "model_registry"
 os.makedirs(LOCAL_REGISTRY_PATH, exist_ok=True)
+
+# ────────────────────────────────────────────────
+# LOCAL FILE HANDLING
+# ────────────────────────────────────────────────
 
 def get_run_dir(model_name: str) -> str:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -52,12 +64,66 @@ def load_model_from_run(run_dir: str) -> keras.Model:
     print(Fore.GREEN + f"✅ Model loaded from {model_path}" + Style.RESET_ALL)
     return model
 
+# ────────────────────────────────────────────────
+# METRICS AUTO-EXTRACTION
+# ────────────────────────────────────────────────
 
+def extract_final_metrics(history: dict) -> dict:
+    """
+    Extracts final epoch metrics from model.fit() history.
+    """
+    final_metrics = {}
+    for key, values in history.items():
+        if isinstance(values, list) and len(values) > 0:
+            final_metrics[key] = values[-1]
+    return final_metrics
+
+# ────────────────────────────────────────────────
+# GCS UPLOAD
+# ────────────────────────────────────────────────
+
+def upload_directory_to_gcs(local_dir: str, bucket_name: str, gcs_prefix: str):
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+
+    for root, _, files in os.walk(local_dir):
+        for file in files:
+            local_path = os.path.join(root, file)
+            relative_path = os.path.relpath(local_path, LOCAL_REGISTRY_PATH)
+            blob_path = os.path.join(gcs_prefix, relative_path)
+
+            blob = bucket.blob(blob_path)
+            blob.upload_from_filename(local_path)
+            print(Fore.CYAN + f"☁️ Uploaded to gs://{bucket_name}/{blob_path}" + Style.RESET_ALL)
+
+# ────────────────────────────────────────────────
+# FINALIZATION
+# ────────────────────────────────────────────────
+
+def finalize_and_upload(model, history, params, model_name="model"):
+    # Create a fresh run directory internally
+    run_dir = get_run_dir(model_name)
+
+    # Save model and the params and metrics
+    save_model(model, run_dir)
+    save_weights(model, run_dir)
+    save_metrics_csv(history, run_dir)
+
+    # Always extract metrics from history automatically
+    final_metrics = extract_final_metrics(history)
+    save_results_json(params, final_metrics, run_dir)
+
+    # Upload everything to GCS
+    upload_directory_to_gcs(run_dir, GCS_BUCKET_NAME, GCS_MODEL_PREFIX)
+
+    print(Fore.MAGENTA + "✅ All artifacts saved and uploaded securely." + Style.RESET_ALL)
 
 ################ USAGE DE REGISTERY ###########################
-#run_dir = get_run_dir("the_model_name")
+#from registry import finalize_and_upload
 
-#save_model(model, run_dir)
-#save_weights(model, run_dir)
-#save_metrics_csv(history.history, run_dir)
-#save_results_json(params, metrics, run_dir)
+#finalize_and_upload(
+#    model=model,
+#    history=history.history,
+#    params={"lr": 0.001, "batch_size": 64},
+#    model_name="my_cnn_model"
+#)
