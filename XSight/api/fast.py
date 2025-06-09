@@ -8,13 +8,13 @@ import tensorflow as tf
 
 
 
-from XSight.ML_Logic.registery import load_model_from_run
+from XSight.ML_Logic.registery import load_model_from_gcp
 from XSight.ML_Logic.preprocess import preprocess_basic, preprocess_one_target, preprocess_6cat, resize_all_images, stratified_chunk_split
 from PIL import Image
 import io
 
 app = FastAPI()
-app.state.model=load_model_from_run("model_in_prod")
+app.state.model=load_model_from_gcp("model/path/in/gcp/.keras")
 
 # Allowing all middleware is optional, but good practice for dev purposes
 app.add_middleware(
