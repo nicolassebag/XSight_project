@@ -43,6 +43,23 @@ def drop_unnecessary_columns(df: pd.DataFrame) -> pd.DataFrame:
 def encode_labels(df: pd.DataFrame, save_scaler_path: str) -> pd.DataFrame:
     """OneHotEncode the labels and drop the original column."""
 
+    # Filtrer les lignes avec une seule maladie (pas de '|')
+    df = df[~df["Finding Labels"].str.contains("\|")]
+
+    # Supprimer certaines pathologies rares
+    labels_to_remove = ['Emphysema', 'Fibrosis', 'Edema', 'Pneumonia', 'Hernia']
+    df = df[~df["Finding Labels"].isin(labels_to_remove)]
+
+    # Séparer "No Finding" des autres
+    no_finding_df = df[df["Finding Labels"] == "No Finding"]
+    other_df = df[df["Finding Labels"] != "No Finding"]
+
+    # Sous-échantillonner "No Finding" à 20 000
+    no_finding_sampled = no_finding_df.sample(n=20000, random_state=42)
+
+    # Recombiner
+    df = pd.concat([no_finding_sampled, other_df], ignore_index=True)
+
     label_column =  'Finding Labels'
 
     if label_column in df.columns:
