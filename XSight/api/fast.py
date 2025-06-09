@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import joblib
 from typing import Literal, Tuple
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
@@ -6,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import tensorflow as tf
 
-
+from XSight.params import PATHO_COLUMNS
 
 from XSight.ML_Logic.registery import load_model_from_gcp
 from XSight.ML_Logic.preprocess import preprocess_basic, preprocess_one_target, preprocess_6cat, resize_all_images, stratified_chunk_split
@@ -14,7 +15,7 @@ from PIL import Image
 import io
 
 app = FastAPI()
-app.state.model=load_model_from_gcp("model/path/in/gcp/.keras")
+app.state.model=load_model_from_gcp("model_registry/test_model_20250609_103957/model.keras")
 
 # Allowing all middleware is optional, but good practice for dev purposes
 app.add_middleware(
@@ -34,7 +35,8 @@ async def predict(file: UploadFile = File(...),
                   view_position: Literal["PA", "AP"] = Form(...),
                   pixel_spacing_x: float = Form(...),
                   pixel_spacing_y: float = Form(...),
-                  final_size: Tuple[int, int] = (64, 64)
+                  final_width: int = Form(64),
+                  final_height: int = Form(64)
                   ):
     """
     Predicts pathology of patient given X-ray image and metadata :
@@ -45,6 +47,8 @@ async def predict(file: UploadFile = File(...),
 
     ### ---- Scaling metadata ---- ###
 
+    final_size = (final_width, final_height)
+    
     metadata = dict({"Patient Sex": patient_sex,
                      "Patient Age": patient_age,
                      "View Point": view_position})
@@ -55,44 +59,114 @@ async def predict(file: UploadFile = File(...),
 
 
     ### ---- Preprocessing file ---- ###
+    X_tab = pd.DataFrame([metadata])
 
-    if file.content_type != "image/png":
-        raise HTTPException(status_code=400, detail="Image must be a PNG")
+    # Encodage des variables catégorielles
+    X_tab["Patient Sex M"] = X_tab["Patient Sex"].map({"M": 1, "F": 0})
+    X_tab["View Position PA"] = X_tab["View Position"].map({"PA": 1, "AP": 0})
+    X_tab.drop(columns=["Patient Sex", "View Position"], inplace=True)
 
-    # Lecture de l'image en mémoire
-    image_bytes = await file.read()
-    try:
-        image = Image.open(io.BytesIO(image_bytes)).convert("L")  # "L" = mode 8-bit grayscale
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Impossible de lire l'image PNG")
+    # Scaling de l'âge
+    scaler = joblib.load("XSight/ML_Logic/scaler.joblib")
+    X_tab["Patient Age"] = scaler.transform(X_tab[["Patient Age"]])
 
+    # Conversion en numpy + batch
+    X_tab_np = X_tab.values.astype("float32")  # (1, 3)
 
-    # Taille physique cible (en pixels)
-    pixel_spacing_x = pixel_spacing_x
-    pixel_spacing_y = pixel_spacing_y
+    ### ---- Prétraitement image ---- ###
+    if image.mode != "RGB":
+        image = image.convert("RGB")
 
-    target_phys_size=(256, 256)
-
+    # Redimension à taille physique homogène
+    target_phys_size = (256, 256)
     new_width = int(target_phys_size[0] / pixel_spacing_x)
     new_height = int(target_phys_size[1] / pixel_spacing_y)
 
-    # Redimensionnement à taille physique homogène
-    image = tf.image.resize(image, (new_height, new_width))
+    image = image.resize((new_width, new_height))
+    image = image.resize(final_size)
 
-    # Resize final pour le modèle
-    image = tf.image.resize(image, final_size)
+    # Tensor, normalisation, batch
+    X_img = np.array(image).astype("float32") / 255.0  # (H, W, 3)
+    # X_img = np.expand_dims(X_img, axis=-1)  # (H, W, 1)
+    X_img = np.expand_dims(X_img, axis=0)   # (1, H, W, 1)
 
-    # Normalisation des pixels
-    X_img = image / 255.0
+    ### ---- Prédiction ---- ###
+    y_pred = app.state.model.predict([X_img, X_tab_np])  # (n_classes,)
 
-    #Predicting with the model
+    prediction = pd.DataFrame(y_pred, columns=PATHO_COLUMNS)
+    prediction = prediction.loc[:,(prediction !=0).any(axis=0)]
+    prediction = prediction.iloc[0].to_dict()
 
-    y_pred = app.state.model.predict([X_img,X_tab])
-
-    # return y_pred
-    return {'pathologies':pd.DataFrame(y_pred)}
+    return X_tab_np, X_img, prediction
 
 # Define a root \`/\` endpoint
 @app.get("/")
 def root():
     return {'greeting': 'hello'}
+
+
+
+########### OLD ###########
+# async def predict(file: UploadFile = File(...),
+#                   patient_age: int = Form(...),
+#                   patient_sex: Literal["M", "F"] = Form(...),
+#                   view_position: Literal["PA", "AP"] = Form(...),
+#                   pixel_spacing_x: float = Form(...),
+#                   pixel_spacing_y: float = Form(...),
+#                   final_size: Tuple[int, int] = (64, 64)
+#                   ):
+#     """
+#     Predicts pathology of patient given X-ray image and metadata :
+#     - Age (int)
+#     - Sex (M or F)
+#     - View point (PA or AP)
+#     """
+
+#     ### ---- Scaling metadata ---- ###
+
+#     metadata = dict({"Patient Sex": patient_sex,
+#                      "Patient Age": patient_age,
+#                      "View Point": view_position})
+
+#     metadata_df = pd.DataFrame([metadata])
+#     scaler = joblib.load("XSight/ML_Logic/scaler.joblib")
+#     X_tab = scaler.transform(metadata_df)
+
+
+#     ### ---- Preprocessing file ---- ###
+
+#     if file.content_type != "image/png":
+#         raise HTTPException(status_code=400, detail="Image must be a PNG")
+
+#     # Lecture de l'image en mémoire
+#     image_bytes = await file.read()
+#     try:
+#         image = Image.open(io.BytesIO(image_bytes)).convert("L")  # "L" = mode 8-bit grayscale
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail="Impossible de lire l'image PNG")
+
+
+#     # Taille physique cible (en pixels)
+#     pixel_spacing_x = pixel_spacing_x
+#     pixel_spacing_y = pixel_spacing_y
+
+#     target_phys_size=(256, 256)
+
+#     new_width = int(target_phys_size[0] / pixel_spacing_x)
+#     new_height = int(target_phys_size[1] / pixel_spacing_y)
+
+#     # Redimensionnement à taille physique homogène
+#     image = tf.image.resize(image, (new_height, new_width))
+
+#     # Resize final pour le modèle
+#     image = tf.image.resize(image, final_size)
+
+#     # Normalisation des pixels
+#     X_img = image / 255.0
+
+#     #Predicting with the model
+
+#     y_pred = app.state.model.predict([X_img,X_tab])
+
+#     # return y_pred
+#     return {'pathologies':pd.DataFrame(y_pred)}
