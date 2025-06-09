@@ -12,7 +12,13 @@ from keras.optimizers import Adam
 from keras.optimizers.schedules import ExponentialDecay
 from keras.metrics import AUC
 from keras.losses import BinaryFocalCrossentropy
-
+import tensorflow as tf
+from tensorflow.keras import Model, layers, Input
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers.schedules import ExponentialDecay
+from tensorflow.keras.metrics import AUC
+from tensorflow.keras.losses import BinaryFocalCrossentropy
 
 def initialize_model(image_size:int,
                      num_tabular_features:int,
@@ -82,39 +88,75 @@ def initialize_model_old(input_shape: tuple, num_labels:int) -> Model:
     return model
 
 
-def compile_model(model: Model, num_labels: int, loss:str ='binary_crossentropy') -> Model:
+def initialize_resnet_model(
+    image_size: Tuple[int, int, int],
+    num_tabular_features: int,
+    num_labels: int,
+    train_base: bool = False
+) -> Model:
     """
-    Compile the Neural Network
-    Loss : 'binary_crossentropy' or 'binary_focal_crossentropy'
-    - Use 'binary_crossentropy' for multi-label classification as multiple labels can be true for each sample
-    - Alternatively use 'binary_focal_crossentropy' to offset imbalanced classes : penalizes more strongly errors on rare classes.
+    Modèle ResNet50 + tête fully-connected pour classification multi-label.
+    Deux inputs : image et features tabulaires.
     """
-    learning_rate_schedule = ExponentialDecay(initial_learning_rate=0.001,
-                                              decay_steps=100,
-                                              decay_rate=0.9)
+    img_in = Input(shape=image_size, name="img_input")
+    tab_in = Input(shape=(num_tabular_features,), name="tab_input")
+    base = tf.keras.applications.ResNet50(
+        include_top=False,
+        weights="imagenet",
+        input_tensor=img_in
+    )
+    base.trainable = train_base
+    x = base.output
+    x = layers.GlobalAveragePooling2D()(x)
+    x = layers.Dense(128, activation=None)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
+    x = layers.Dropout(0.15)(x)
+    t = layers.Dense(32, activation=None)(tab_in)
+    t = layers.BatchNormalization()(t)
+    t = layers.Activation("relu")(t)
+    t = layers.Dropout(0.15)(t)
+    t = layers.Dense(32, activation=None)(t)
+    t = layers.BatchNormalization()(t)
+    t = layers.Activation("relu")(t)
+    t = layers.Dropout(0.15)(t)
+    combined = layers.concatenate([x, t])
+    combined = layers.Dense(64, activation=None)(combined)
+    combined = layers.BatchNormalization()(combined)
+    combined = layers.Activation("relu")(combined)
+    combined = layers.Dropout(0.15)(combined)
+    out = layers.Dense(num_labels, activation="sigmoid", name="output")(combined)
+    return Model(inputs=[img_in, tab_in], outputs=out, name="ResNet50_Tabular_ML")
 
-    optimizer = Adam(learning_rate=learning_rate_schedule)
 
-    metrics = [AUC(name='pr_auc', multi_label=True, num_labels=num_labels, curve='PR'),
-               'accuracy',
-               'precision',
-               'recall']
-
-    if loss == 'binary_focal_crossentropy':
-        loss = BinaryFocalCrossentropy(apply_class_balancing=True,
-                                       gamma=2.0, # peut être augmenté (jusqu'à 5 par exemple pour pénalisation plus forte)
-                                       label_smoothing=0.0,
-                                       reduction='sum_over_batch_size',
-                                    )
-
-    model.compile(optimizer=optimizer,
-                  loss=loss,
-                  metrics=metrics)
-
-
-
-
-    print("✅ Model compiled")
+def compile_model(
+    model: Model,
+    initial_lr: float = 1e-4,
+    decay_steps: int = 500,
+    decay_rate: float = 0.9,
+    use_focal: bool = True
+) -> Model:
+    lr_sched = ExponentialDecay(
+        initial_learning_rate=initial_lr,
+        decay_steps=decay_steps,
+        decay_rate=decay_rate
+    )
+    opt = Adam(learning_rate=lr_sched)
+    loss = (
+        BinaryFocalCrossentropy(gamma=2.0)
+        if use_focal
+        else "binary_crossentropy"
+    )
+    model.compile(
+        optimizer=opt,
+        loss=loss,
+        metrics=[
+            AUC(name="pr_auc", curve="PR"),
+            "accuracy",
+            tf.keras.metrics.Precision(name="precision"),
+            tf.keras.metrics.Recall(name="recall"),
+        ]
+    )
     return model
 
 
@@ -217,3 +259,51 @@ def evaluate_model(
     print(f"AUC: {round(pr_auc, 2)}")
 
     return metrics
+
+def parse_image_function(
+    img_path: tf.Tensor,
+    tab_features: tf.Tensor,
+    label: tf.Tensor,
+    final_size: Tuple[int,int]
+) -> Tuple[Tuple[tf.Tensor, tf.Tensor], tf.Tensor]:
+    img = tf.io.decode_png(tf.io.read_file(img_path), channels=1)
+    img = tf.image.convert_image_dtype(img, tf.float32)
+    img = tf.image.resize(img, final_size)
+    img = tf.image.grayscale_to_rgb(img)
+    img = tf.keras.applications.resnet.preprocess_input(img)
+    if tf.keras.mixed_precision.global_policy().name == "mixed_float16":
+        img = tf.cast(img, tf.float16)
+    return (img, tab_features), label
+
+def make_dataset(
+    img_paths: list[str],
+    X_tab: np.ndarray,
+    y: np.ndarray,
+    image_size: Tuple[int,int],
+    batch_size: int,
+    shuffle: bool = False
+):
+    ds = tf.data.Dataset.from_tensor_slices((img_paths, X_tab, y))
+    if shuffle:
+        ds = ds.shuffle(buffer_size=len(img_paths))
+    def _map(p, t, l):
+        return parse_image_function(p, t, l, final_size=image_size)
+    ds = ds.map(_map, num_parallel_calls=tf.data.AUTOTUNE)
+    if shuffle:
+        def _aug(inputs, label):
+            img, tab = inputs
+            img = tf.image.random_flip_left_right(img)
+            img = tf.image.random_brightness(img, max_delta=0.1)
+            return (img, tab), label
+        ds = ds.map(_aug, num_parallel_calls=tf.data.AUTOTUNE)
+    ds = ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    return ds
+
+def configure_gpu():
+    gpus = tf.config.list_physical_devices("GPU")
+    if gpus:
+        for g in gpus:
+            tf.config.experimental.set_memory_growth(g, True)
+        print(Fore.GREEN + f"GPU détectés ({len(gpus)}) – memory growth activé" + Style.RESET_ALL)
+    else:
+        print(Fore.YELLOW + "Aucun GPU détecté, entraînement sur CPU." + Style.RESET_ALL)
