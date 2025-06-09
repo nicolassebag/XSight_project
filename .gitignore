@@ -1,4 +1,6 @@
 main_test.py
+experiments/
+
 # Source data files
 raw_data/
 
