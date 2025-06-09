@@ -21,7 +21,7 @@ from io import BytesIO
 from XSight.ML_Logic.model import initialize_model, compile_model, train_model, evaluate_model
 from XSight.ML_Logic.preprocess import preprocess_basic, preprocess_one_target, preprocess_6cat, resize_all_images, stratified_chunk_split
 from XSight.params import *
-
+from XSight.ML_Logic.registery import finalize_and_upload
 ### Variables ###
 
 
@@ -86,6 +86,20 @@ def main(num_labels = num_labels ):
                                 validation_split=0.3
                             )
 
+    params = {
+    "epochs": epochs,
+    "batch_size": batch_size,
+    "validation_split": validation_split,
+    "patience" : patience
+    }
+
+    finalize_and_upload(
+    model=model,
+    history=history,
+    params=params,
+    model_name='model'
+)
+
     # metrics = evaluate_model(
     #     model= model,
     #     X_img: np.ndarray,
@@ -95,7 +109,6 @@ def main(num_labels = num_labels ):
     # )
 
     # print(metrics)
-
 
 
 if __name__ == "__main__":
