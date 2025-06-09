@@ -5,6 +5,7 @@ from datetime import datetime
 from tensorflow import keras
 from colorama import Fore, Style
 from google.cloud import storage
+import tempfile
 
 # ────────────────────────────────────────────────
 # CONFIGURATION
@@ -55,14 +56,6 @@ def save_results_json(params: dict, metrics: dict, run_dir: str) -> None:
 
     print(Fore.GREEN + "✅ Params and metrics JSON saved." + Style.RESET_ALL)
 
-def load_model_from_run(run_dir: str) -> keras.Model:
-    model_path = os.path.join(run_dir, "model.keras")
-    if not os.path.exists(model_path):
-        print(Fore.RED + f"❌ Model file not found at {model_path}" + Style.RESET_ALL)
-        return None
-    model = keras.models.load_model(model_path)
-    print(Fore.GREEN + f"✅ Model loaded from {model_path}" + Style.RESET_ALL)
-    return model
 
 # ────────────────────────────────────────────────
 # METRICS AUTO-EXTRACTION
@@ -117,6 +110,38 @@ def finalize_and_upload(model, history, params, model_name="model"):
     upload_directory_to_gcs(run_dir, GCS_BUCKET_NAME, GCS_MODEL_PREFIX)
 
     print(Fore.MAGENTA + "✅ All artifacts saved and uploaded securely." + Style.RESET_ALL)
+
+# ────────────────────────────────────────────────
+# LOAD MODEL FROM GCP
+# ────────────────────────────────────────────────
+
+def load_model_from_gcp(gcp_path: str) -> keras.Model:
+    """
+    Download model.keras from GCP and load it with keras.
+
+        gcp_path: Full GCS path to model.keras (e.g. "model_registry/your_model/model.keras").
+
+    Returns:
+        keras.Model
+    """
+    import tempfile
+    bucket_name = GCS_BUCKET_NAME
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(gcp_path)
+
+    if not blob.exists():
+        print(Fore.RED + f"❌ Model file not found in GCS at: gs://{bucket_name}/{gcp_path}" + Style.RESET_ALL)
+        return None
+
+    with tempfile.NamedTemporaryFile(suffix=".keras", delete=False) as tmp_file:
+        blob.download_to_filename(tmp_file.name)
+        print(Fore.CYAN + f"⬇️  Downloaded model from GCS to: {tmp_file.name}" + Style.RESET_ALL)
+        model = keras.models.load_model(tmp_file.name)
+        print(Fore.GREEN + f"✅ Model loaded successfully from GCS!" + Style.RESET_ALL)
+
+    return model
+
 
 ################ USAGE DE REGISTERY ###########################
 #from registry import finalize_and_upload
