@@ -8,6 +8,11 @@ raw_data/
 *.ipynb
 Notebooks/
 
+# images
+*.png
+*.jpg
+*.jpeg
+
 # Saved Models
 model_registry/
 
