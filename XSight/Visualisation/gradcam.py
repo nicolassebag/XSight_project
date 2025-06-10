@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 
 import pandas as pd
 import joblib
+import io
+import base64
+
 
 from XSight.params import PATHO_COLUMNS
 
@@ -28,7 +31,7 @@ def make_gradcam_heatmap(X_img,
     # of the last conv layer as well as the output predictions
     # threshold (float): Seuil entre 0 et 1. Seules les valeurs supérieures seront conservées.
     #                   0.4 = garde les 60% des zones les plus importantes
-    #                   0.6 = garde les 40% des zones les plus importantes
+    #                   0.7 = garde les 30% des zones les plus importantes
     grad_model = keras.models.Model(
         model.inputs, [model.get_layer(last_conv_layer_name).output, model.output]
     )
@@ -78,6 +81,32 @@ def apply_heatmap(img_array, heatmap, alpha=0.4):
     # Superposition
     superimposed_img = jet_heatmap * alpha + img_array
     return keras.utils.array_to_img(superimposed_img)
+
+def generate_heatmap_image(img_array, heatmap, alpha=0.4):
+    """Génère l'image avec heatmap superposée"""
+    img_denorm = (img_array * 255).astype("uint8")
+
+    heatmap = np.uint8(255 * heatmap)
+    jet = mpl.colormaps["jet"]
+    jet_colors = jet(np.arange(256))[:, :3]
+    jet_heatmap = jet_colors[heatmap]
+
+    jet_heatmap = keras.utils.array_to_img(jet_heatmap)
+    jet_heatmap = jet_heatmap.resize((img_denorm.shape[1], img_denorm.shape[0]))
+    jet_heatmap = np.array(jet_heatmap)
+
+    superimposed_img = jet_heatmap * alpha + img_denorm
+    return keras.utils.array_to_img(superimposed_img)
+
+def image_to_base64(pil_image):
+    """Convertit une image PIL en base64"""
+    img_byte_arr = io.BytesIO()
+    pil_image.save(img_byte_arr, format='PNG')
+    img_byte_arr.seek(0)
+    img_b64 = base64.b64encode(img_byte_arr.getvalue()).decode()
+    return img_b64
+
+
 
 #########################################################
 ##################### TO DELETE ? #######################
