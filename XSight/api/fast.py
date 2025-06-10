@@ -19,6 +19,8 @@ app = FastAPI()
 
 X_PRED={} # stockage des inputs
 
+last_conv_layer_name = "conv3_block2_out"
+
 app.state.model=load_model_from_gcp("model_registry/test_model_20250609_154800/model.keras")
 
 # Allowing all middleware is optional, but good practice for dev purposes
@@ -30,9 +32,8 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# http://127.0.0.1:8000/predict?pickup_datetime=2014-07-06+19:18:00&pickup_longitude=-73.950655&pickup_latitude=40.783282&dropoff_longitude=-73.984365&dropoff_latitude=40.769802&passenger_count=2
 
-@app.post("/input")
+# @app.post("/input")
 async def inputs(file: UploadFile = File(...),
                   patient_age: int = Form(...),
                   patient_sex: Literal["M", "F"] = Form(...),
@@ -100,7 +101,7 @@ async def inputs(file: UploadFile = File(...),
 
 
 
-@app.post("/predict")
+# @app.post("/predict")
 async def predict(image_id: str = Form(...)):
     """
     Predicts pathology from preprocessed data using data_id
@@ -125,7 +126,7 @@ async def predict(image_id: str = Form(...)):
 
         # IMPORTANT : Conversion en types Python natifs
         prediction_serializable = {k: float(v) for k, v in prediction_dict.items()}
-        return {"image_id": image_id, "pathologies":list(prediction_serializable.keys())}
+        return {"image_id": image_id, "pathologies":prediction_serializable}
 
     except Exception as e:
         import traceback
@@ -133,7 +134,7 @@ async def predict(image_id: str = Form(...)):
         raise HTTPException(status_code=500, detail=error_detail)
 
 
-@app.post("/heatmap")
+# @app.post("/heatmap")
 async def heatmap(image_id: str = Form(...), patho_index: int = Form(...)):
     try:
         if image_id not in X_PRED:
@@ -146,7 +147,7 @@ async def heatmap(image_id: str = Form(...), patho_index: int = Form(...)):
             X_img,
             X_tab,
             app.state.model,
-            last_conv_layer_name="conv5_block3_out",
+            last_conv_layer_name=last_conv_layer_name,
             pred_index=patho_index)
 
         # Charge l'image originale
@@ -170,6 +171,73 @@ async def heatmap(image_id: str = Form(...), patho_index: int = Form(...)):
         error_detail = f"Erreur : {str(e)}\nTraceback : {traceback.format_exc()}"
         raise HTTPException(status_code=500, detail=error_detail)
 
+
+@app.post("/process_all")
+async def process_all(file: UploadFile = File(...),
+                             patient_age: int = Form(...),
+                             patient_sex: Literal["M", "F"] = Form(...),
+                             view_position: Literal["PA", "AP"] = Form(...),
+                             pixel_spacing_x: float = Form(...),
+                             pixel_spacing_y: float = Form(...),
+                             final_width: int = Form(512),
+                             final_height: int = Form(512)):
+
+    try:
+        # 1. Input
+        input_result = await inputs(file, patient_age, patient_sex, view_position,
+                                   pixel_spacing_x, pixel_spacing_y, final_width, final_height)
+        image_id = input_result["image_id"]
+
+        # 2. Predict
+        prediction_result = await predict(image_id)
+        pathologies = prediction_result["pathologies"]
+
+        # 3. Heatmap
+        X_img = X_PRED[image_id]["X_img"]
+        X_tab = X_PRED[image_id]["X_tab"]
+
+        try:
+            # Désactivation dernière activation pour affichage heatmap
+            if hasattr(app.state.model.layers[-1], 'activation'):
+                original_activation = app.state.model.layers[-1].activation
+                app.state.model.layers[-1].activation = None
+                print("Activation désactivée pour Grad-CAM")
+
+            heatmap = make_gradcam_heatmap(
+                X_img=X_img,
+                X_tab=X_tab,
+                model=app.state.model,
+                last_conv_layer_name=last_conv_layer_name,
+                pred_index=None,  # Le modèle sélectionne automatiquement la classe prédite
+                threshold=0.7
+            )
+
+            # Ré-activation dernière activation
+            if 'original_activation' in locals():
+                app.state.model.layers[-1].activation = original_activation
+
+            # Conversion en image base64
+            heatmap_img = generate_heatmap_image(X_img[0], heatmap)
+            heatmap_b64 = image_to_base64(heatmap_img)
+
+        except Exception as e:
+            print(f"Erreur lors de la génération de la heatmap : {e}")
+            heatmap_b64 = None
+
+        # Nettoyage du stockage
+        if image_id in X_PRED:
+            del X_PRED[image_id]
+
+        return {
+            "image_id": image_id,
+            "pathologies": pathologies,
+            "heatmap": heatmap_b64
+        }
+
+    except Exception as e:
+        import traceback
+        error_detail = f"Erreur : {str(e)}\nTraceback : {traceback.format_exc()}"
+        raise HTTPException(status_code=500, detail=error_detail)
 
 # Define a root \`/\` endpoint
 @app.get("/")
