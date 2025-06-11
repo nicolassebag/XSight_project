@@ -170,7 +170,7 @@ def load_pt_model_from_gcp(gcp_path: str) -> YOLO:
 
     return model
 
-load_model_from_gcp("model_registry/test_model_20250609_154800/model.keras")
+# load_model_from_gcp("model_registry/test_model_20250609_154800/model.keras")
 
 ################ USAGE DE REGISTERY ###########################
 #from registry import finalize_and_upload
