@@ -67,7 +67,7 @@ def upload_image_folder_to_gcs(
     folder_name = os.path.basename(os.path.normpath(local_folder))
     # Example: images_64x64 -> 64
     try:
-        compression_level = [int(s) for s in folder_name.split("_") if s.isdigit()][0]
+            compression_level = [int(s) for s in folder_name.split("_") if s.isdigit()][0]
     except Exception:
         print(Fore.RED + f"❌ Could not extract compression level from folder name: {folder_name}" + Style.RESET_ALL)
         return

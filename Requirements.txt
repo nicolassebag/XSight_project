@@ -16,3 +16,7 @@ gcsfs
 fastapi
 uvicorn
 streamlit
+requests
+IPython
+joblib
+python-multipart
