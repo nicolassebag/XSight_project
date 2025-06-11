@@ -15,3 +15,7 @@ keras
 seaborn
 colorama
 scikit-learn
+requests
+IPython
+joblib
+python-multipart
