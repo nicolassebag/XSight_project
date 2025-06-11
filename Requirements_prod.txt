@@ -19,3 +19,7 @@ requests
 IPython
 joblib
 python-multipart
+ultralytics
+opencv-python
+torch
+torchvision

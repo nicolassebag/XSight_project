@@ -7,6 +7,8 @@ from colorama import Fore, Style
 from google.cloud import storage
 import tempfile
 from XSight.params import *
+from ultralytics import YOLO
+import tempfile
 
 # ────────────────────────────────────────────────
 # CONFIGURATION
@@ -142,7 +144,33 @@ def load_model_from_gcp(gcp_path: str) -> keras.Model:
 
     return model
 
-load_model_from_gcp("model_registry/test_model_20250609_154800/model.keras")
+def load_pt_model_from_gcp(gcp_path: str) -> YOLO:
+    """
+    Download model.pt from GCP and load it with ultralytics.YOLO.
+
+        gcp_path: Full GCS path to model.pt (e.g. "model_registry/your_model/best_nico_balanced.pt").
+
+    Returns:
+        ultralytics.YOLO
+    """
+    bucket_name = MODEL_BUCKET_NAME
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(gcp_path)
+
+    if not blob.exists():
+        print(f"❌ Model file not found in GCS at: gs://{bucket_name}/{gcp_path}")
+        return None
+
+    with tempfile.NamedTemporaryFile(suffix=".pt", delete=False) as tmp_file:
+        blob.download_to_filename(tmp_file.name)
+        print(f"⬇️  Downloaded model from GCS to: {tmp_file.name}")
+        model = YOLO(tmp_file.name)
+        print(f"✅ Model loaded successfully from GCS!")
+
+    return model
+
+# load_model_from_gcp("model_registry/test_model_20250609_154800/model.keras")
 
 ################ USAGE DE REGISTERY ###########################
 #from registry import finalize_and_upload
