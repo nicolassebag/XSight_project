@@ -24,3 +24,4 @@ ultralytics
 opencv-python
 torch
 torchvision
+ultralytics
