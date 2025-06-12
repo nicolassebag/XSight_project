@@ -9,20 +9,37 @@ API_URL = "https://xsightdocker-1047363581301.europe-west1.run.app/analyze"  # U
 # Set app to wide mode
 st.set_page_config(page_title="XSight", layout="wide")
 
-# Background image using HTML injection
-components.html(
+# # Background image using HTML injection
+# components.html(
+#     """
+#     <style>
+#     body {
+#         background-image: url('https://images.unsplash.com/photo-1588776814546-ec7e4b6dff53?auto=format&fit=crop&w=1650&q=80');
+#         background-size: cover;
+#         background-position: center;
+#         background-attachment: fixed;
+#     }
+#     </style>
+#     """,
+#     height=0,
+# )
+
+
+# Background image using CSS injection
+st.markdown(
     """
     <style>
-    body {
-        background-image: url('https://images.unsplash.com/photo-1588776814546-ec7e4b6dff53?auto=format&fit=crop&w=1650&q=80');
+    .stApp {
+        background-image: url("https://imageio.forbes.com/specials-images/imageserve/66f9624039565d35b6ecb4b3/Radiology-Doctor-working-diagnose-treatment-virtual-Human-Lungs-and-long-Covid-19-on/960x0.jpg?format=jpg&width=960");
         background-size: cover;
+        background-repeat: no-repeat;
         background-position: center;
-        background-attachment: fixed;
     }
     </style>
     """,
-    height=0,
+    unsafe_allow_html=True
 )
+
 
 # App Title
 st.title("🧠 XSight")
