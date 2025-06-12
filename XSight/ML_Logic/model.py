@@ -20,6 +20,48 @@ from tensorflow.keras.optimizers.schedules import ExponentialDecay
 from tensorflow.keras.metrics import AUC
 from tensorflow.keras.losses import BinaryFocalCrossentropy
 
+from ultralytics import YOLO
+
+
+from ultralytics import YOLO
+
+def initialize_yolo_model(model_name="yolo11x-cls"):
+    """
+    Initialise un modèle YOLO pour la classification.
+    Par défaut : yolo11x-cls (pré-entraîné sur ImageNet), passer le chemin des poids (.pt) pour un autre
+    modèle pré-entrainé.
+    """
+    model = YOLO(model_name)
+    return model
+
+
+def train_yolo_model(model, data_dir="yolo_dataset_groupé_nico_adjusted", epochs=30, batch_size=128):
+    """
+    Entraîne le modèle YOLO sur un dossier de classification (style ImageNet).
+
+    Args:
+        model: objet YOLO initialisé
+        data_dir: dossier contenant /train et /val avec une sous-arborescence par classe
+        epochs: nombre d'epochs
+        batch_size: taille des batchs
+    """
+    results = model.train(
+        data=data_dir,
+        epochs=epochs,
+        imgsz=224,
+        degrees=10,
+        translate=0.1,
+        scale=0.1,
+        shear=0.1,
+        hsv_v=0.1,
+        hsv_s=0.1,
+        auto_augment="randaugment",
+        batch=batch_size,
+        device=0  # ou 'cpu' si pas de GPU
+    )
+    return results
+
+
 def initialize_model(image_size:int,
                      num_tabular_features:int,
                      num_labels:int) -> Model:
